@@ -1,0 +1,19 @@
+import express from "express"
+import upload from "../middleware/uploadMiddleware.js"
+import auth from "../middleware/authMiddleware.js"
+import { uploadFile, getUserFiles, deleteFile,  getAllFiles, adminDeleteFile } from "../controllers/fileController.js"
+import { viewFile } from "../controllers/fileController.js"
+
+
+const router = express.Router()
+
+router.post("/upload", auth, upload.single("file"), uploadFile)
+router.get("/", auth, getUserFiles)
+router.delete("/:id", auth, deleteFile)
+
+router.get("/admin/all", auth, admin, getAllFiles)
+router.delete("/admin/:id", auth, admin, adminDeleteFile)
+router.get("/:id", auth, viewFile)
+
+export default router
+
