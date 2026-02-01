@@ -152,6 +152,90 @@ export const getOwnerActiveShares = async (req, res) => {
   }
 }
 
+/** Shared With Me: paginated, excludes hidden, optional search by filename. */
+export const getSharedWithMe = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 4))
+    const search = (req.query.search || "").trim()
+    const skip = (page - 1) * limit
+
+    const match = {
+      requester: req.user._id,
+      status: "approved",
+      hidden: { $ne: true }
+    }
+
+    const lookup = { $lookup: { from: "files", localField: "file", foreignField: "_id", as: "fileDoc" } }
+    const unwind = { $unwind: "$fileDoc" }
+    const searchMatch = search ? { $match: { "fileDoc.filename": { $regex: search, $options: "i" } } } : null
+
+    const pipeline = [
+      { $match: match },
+      lookup,
+      unwind,
+      ...(searchMatch ? [searchMatch] : []),
+      { $count: "total" }
+    ]
+    const countResult = await Permission.aggregate(pipeline)
+    const total = countResult[0]?.total ?? 0
+
+    const dataPipeline = [
+      { $match: match },
+      lookup,
+      unwind,
+      ...(searchMatch ? [searchMatch] : []),
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          access: 1,
+          createdAt: 1,
+          file: {
+            _id: "$fileDoc._id",
+            filename: "$fileDoc.filename",
+            url: "$fileDoc.url",
+            type: "$fileDoc.type",
+            size: "$fileDoc.size",
+            createdAt: "$fileDoc.createdAt"
+          }
+        }
+      }
+    ]
+    const permissions = await Permission.aggregate(dataPipeline)
+
+    res.json({
+      permissions,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit) || 1
+    })
+  } catch (err) {
+    console.error("Get shared with me error:", err)
+    res.status(500).json({ error: "Failed to fetch shared files" })
+  }
+}
+
+/** Remove shared file from my dashboard only (hide, no DB delete). */
+export const hideFromDashboard = async (req, res) => {
+  try {
+    const perm = await Permission.findById(req.params.id)
+    if (!perm) return res.status(404).json({ error: "Permission not found" })
+    if (perm.requester.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Can only remove from your own dashboard" })
+    }
+    if (perm.status !== "approved") return res.status(400).json({ error: "Not an approved share" })
+    perm.hidden = true
+    await perm.save()
+    res.json({ message: "Removed from dashboard" })
+  } catch (err) {
+    console.error("Hide from dashboard error:", err)
+    res.status(500).json({ error: "Failed to remove from dashboard" })
+  }
+}
+
 export const revokeAccess = async (req, res) => {
   try {
     const perm = await Permission.findById(req.params.id)

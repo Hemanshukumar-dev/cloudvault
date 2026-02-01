@@ -1,6 +1,6 @@
 import express from "express"
 import auth from "../middleware/authMiddleware.js"
-import { requestAccess, approveAccess, myRequests, getOwnerRequests, rejectAccess, getOwnerActiveShares, revokeAccess } from "../controllers/permissionController.js"
+import { requestAccess, approveAccess, myRequests, getOwnerRequests, rejectAccess, getOwnerActiveShares, revokeAccess, getSharedWithMe, hideFromDashboard } from "../controllers/permissionController.js"
 
 const router = express.Router()
 
@@ -8,6 +8,8 @@ router.post("/request", auth, requestAccess)
 router.put("/approve/:id", auth, approveAccess)
 router.put("/reject/:id", auth, rejectAccess)
 router.get("/my", auth, myRequests)
+router.get("/shared-with-me", auth, getSharedWithMe)
+router.put("/:id/hide", auth, hideFromDashboard)
 router.get("/owner", auth, getOwnerRequests)
 router.get("/owner/active", auth, getOwnerActiveShares)
 router.delete("/revoke/:id", auth, revokeAccess)

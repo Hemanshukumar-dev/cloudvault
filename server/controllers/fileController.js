@@ -34,8 +34,19 @@ export const uploadFile = async (req, res) => {
 
 export const getUserFiles = async (req, res) => {
   try {
-    const files = await File.find({ user: req.user._id }).sort({ createdAt: -1 })
-    res.json(files)
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 4))
+    const search = (req.query.search || "").trim().toLowerCase()
+    const skip = (page - 1) * limit
+
+    const filter = { user: req.user._id }
+    if (search) filter.filename = { $regex: search, $options: "i" }
+
+    const [files, total] = await Promise.all([
+      File.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      File.countDocuments(filter)
+    ])
+    res.json({ files, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     console.error("Get files error:", err)
     res.status(500).json({ error: "Failed to fetch files" })

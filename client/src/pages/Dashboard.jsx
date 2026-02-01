@@ -6,19 +6,25 @@ import UploadModal from "../components/UploadModal"
 import { AuthContext } from "../context/AuthContext"
 import { getPendingSharedFileId, clearPendingSharedFileId } from "../utils/sharedFileStorage"
 
+const FILES_PER_PAGE = 4
+
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext)
   const navigate = useNavigate()
-  const [files, setFiles] = useState([])
+  const [filesData, setFilesData] = useState({ files: [], total: 0, page: 1, totalPages: 0 })
+  const [sharedData, setSharedData] = useState({ permissions: [], total: 0, page: 1, totalPages: 0 })
   const [accessRequests, setAccessRequests] = useState([])
   const [activeShares, setActiveShares] = useState([])
   const [myRequests, setMyRequests] = useState([])
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [filesLoading, setFilesLoading] = useState(true)
+  const [sharedLoading, setSharedLoading] = useState(true)
+  const [tabsLoading, setTabsLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("incoming")
   const [searchTerm, setSearchTerm] = useState("")
+  const [searchInput, setSearchInput] = useState("")
 
   const [sharedModalOpen, setSharedModalOpen] = useState(false)
   const [pendingFileId, setPendingFileId] = useState(null)
@@ -28,26 +34,62 @@ const Dashboard = () => {
   const [sharedError, setSharedError] = useState("")
   const [toast, setToast] = useState("")
 
-  const fetchAllData = async () => {
+  const fetchFiles = async (page = 1, search = "") => {
     try {
-      setLoading(true)
-      const [filesRes, reqRes, activeRes, myRes] = await Promise.all([
-        API.get("/files"),
+      setFilesLoading(true)
+      const { data } = await API.get("/files", {
+        params: { page, limit: FILES_PER_PAGE, search: search || undefined }
+      })
+      setFilesData({ files: data.files, total: data.total, page: data.page, totalPages: data.totalPages })
+    } catch (err) {
+      console.error("Fetch files error:", err)
+      setError("Failed to load files")
+    } finally {
+      setFilesLoading(false)
+    }
+  }
+
+  const fetchSharedWithMe = async (page = 1, search = "") => {
+    try {
+      setSharedLoading(true)
+      const { data } = await API.get("/permissions/shared-with-me", {
+        params: { page, limit: FILES_PER_PAGE, search: search || undefined }
+      })
+      setSharedData({
+        permissions: data.permissions,
+        total: data.total,
+        page: data.page,
+        totalPages: data.totalPages
+      })
+    } catch (err) {
+      console.error("Fetch shared error:", err)
+    } finally {
+      setSharedLoading(false)
+    }
+  }
+
+  const fetchTabsData = async () => {
+    try {
+      setTabsLoading(true)
+      const [reqRes, activeRes, myRes] = await Promise.all([
         API.get("/permissions/owner"),
         API.get("/permissions/owner/active"),
         API.get("/permissions/my")
       ])
-      
-      setFiles(filesRes.data)
       setAccessRequests(reqRes.data)
       setActiveShares(activeRes.data)
       setMyRequests(myRes.data)
     } catch (err) {
-      console.error("Fetch error:", err)
-      setError("Failed to load data")
+      console.error("Fetch tabs error:", err)
     } finally {
-      setLoading(false)
+      setTabsLoading(false)
     }
+  }
+
+  const fetchAllData = () => {
+    fetchFiles(filesData.page, searchTerm)
+    fetchSharedWithMe(sharedData.page, searchTerm)
+    fetchTabsData()
   }
 
   useEffect(() => {
@@ -56,8 +98,19 @@ const Dashboard = () => {
       navigate("/admin")
       return
     }
-    fetchAllData()
+    fetchTabsData()
   }, [user, navigate])
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchTerm(searchInput), 400)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
+  useEffect(() => {
+    if (!user || user.role === "admin") return
+    fetchFiles(1, searchTerm)
+    fetchSharedWithMe(1, searchTerm)
+  }, [user, searchTerm])
 
   useEffect(() => {
     if (!user || user.role === "admin") return
@@ -94,7 +147,8 @@ const Dashboard = () => {
       await API.post("/permissions/request", { fileId: pendingFileId, access: sharedAccess })
       closeSharedModal()
       setToast("Access request sent to owner")
-      fetchAllData()
+      fetchTabsData()
+      fetchSharedWithMe(sharedData.page, searchTerm)
       setTimeout(() => setToast(""), 4000)
     } catch (err) {
       setSharedError(err.response?.data?.error || "Failed to send request")
@@ -119,7 +173,9 @@ const Dashboard = () => {
       const form = new FormData()
       form.append("file", file)
       await API.post("/files/upload", form)
-      fetchAllData()
+      fetchFiles(1, searchTerm)
+      fetchSharedWithMe(sharedData.page, searchTerm)
+      fetchTabsData()
     } catch (err) {
       alert(err.response?.data?.error || "Upload failed")
     }
@@ -129,16 +185,30 @@ const Dashboard = () => {
     if (!confirm("Are you sure you want to delete this file?")) return
     try {
       await API.delete(`/files/${id}`)
-      fetchAllData()
+      fetchFiles(filesData.page, searchTerm)
+      fetchSharedWithMe(sharedData.page, searchTerm)
+      fetchTabsData()
     } catch (err) {
       alert(err.response?.data?.error || "Failed to delete file")
+    }
+  }
+
+  const handleRemoveFromDashboard = async (permissionId) => {
+    try {
+      await API.put(`/permissions/${permissionId}/hide`)
+      fetchSharedWithMe(sharedData.page, searchTerm)
+      fetchTabsData()
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to remove from dashboard")
     }
   }
 
   const handleApprove = async (id, access) => {
     try {
       await API.put(`/permissions/approve/${id}`, { access: access || "view" })
-      fetchAllData()
+      fetchFiles(filesData.page, searchTerm)
+      fetchSharedWithMe(sharedData.page, searchTerm)
+      fetchTabsData()
     } catch (err) {
       alert("Failed to approve")
     }
@@ -147,7 +217,7 @@ const Dashboard = () => {
   const handleReject = async (id) => {
     try {
       await API.put(`/permissions/reject/${id}`)
-      fetchAllData()
+      fetchTabsData()
     } catch (err) {
       alert("Failed to reject")
     }
@@ -157,15 +227,12 @@ const Dashboard = () => {
     if (!confirm("Remove access?")) return
     try {
       await API.delete(`/permissions/revoke/${id}`)
-      fetchAllData()
+      fetchSharedWithMe(sharedData.page, searchTerm)
+      fetchTabsData()
     } catch (err) {
       alert("Failed to revoke")
     }
   }
-
-  const filteredFiles = files.filter(f => 
-    f.filename.toLowerCase().includes(searchTerm.toLowerCase())
-  )
 
   return (
     <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans">
@@ -267,8 +334,8 @@ const Dashboard = () => {
                  <input 
                     type="text" 
                     placeholder="Search files..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     className="bg-white border border-[#D8C3A5] text-sm rounded-full pl-9 pr-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#E85A4F] w-full sm:w-64 transition-all"
                  />
                  <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -284,18 +351,49 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {loading ? (
-             <div className="text-center py-10 opacity-50 animate-pulse">Loading drive contents...</div>
-          ) : filteredFiles.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredFiles.map(file => (
-                <FileCard key={file._id} file={file} onDelete={handleDelete} />
+          {filesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 justify-center">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="rounded-xl bg-[#D8C3A5]/50 h-[280px] animate-pulse" />
               ))}
             </div>
+          ) : filesData.files.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 justify-items-center">
+                {filesData.files.map(file => (
+                  <div key={file._id} className="w-full max-w-[280px]">
+                    <FileCard file={file} onDelete={handleDelete} />
+                  </div>
+                ))}
+              </div>
+              {filesData.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <button
+                    type="button"
+                    disabled={filesData.page <= 1}
+                    onClick={() => fetchFiles(filesData.page - 1, searchTerm)}
+                    className="px-3 py-1.5 rounded-lg border border-[#8E8D8A] text-[#8E8D8A] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#D8C3A5]/50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-[#8E8D8A] px-2">
+                    Page {filesData.page} of {filesData.totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={filesData.page >= filesData.totalPages}
+                    onClick={() => fetchFiles(filesData.page + 1, searchTerm)}
+                    className="px-3 py-1.5 rounded-lg border border-[#8E8D8A] text-[#8E8D8A] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#D8C3A5]/50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="bg-[#D8C3A5] bg-opacity-30 rounded-xl p-10 text-center border-2 border-dashed border-[#8E8D8A] border-opacity-30">
-              <p className="text-lg mb-2">{files.length > 0 ? "No matching files found" : "Your drive is empty"}</p>
-              {files.length === 0 && (
+              <p className="text-lg mb-2">{filesData.total > 0 ? "No matching files found" : "Your drive is empty"}</p>
+              {filesData.total === 0 && (
                 <button onClick={() => setModalOpen(true)} className="text-[#E85A4F] font-semibold hover:underline">Upload your first file</button>
               )}
             </div>
@@ -303,20 +401,59 @@ const Dashboard = () => {
         </section>
 
         {/* Shared With Me Section */}
-        {myRequests.some(r => r.status === 'approved') && (
-          <section>
-            <h2 className="text-xl font-bold text-[#8E8D8A] mb-6">Shared With Me</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {myRequests.filter(r => r.status === 'approved' && r.file).map(req => (
-                <FileCard 
-                  key={req._id} 
-                  file={{...req.file, permission: req.access}} 
-                  onDelete={handleDelete} 
-                />
+        <section>
+          <h2 className="text-xl font-bold text-[#8E8D8A] mb-6">Shared With Me</h2>
+          {sharedLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 justify-center">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="rounded-xl bg-[#D8C3A5]/50 h-[280px] animate-pulse" />
               ))}
             </div>
-          </section>
-        )}
+          ) : sharedData.permissions.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 justify-items-center">
+                {sharedData.permissions.map(perm => (
+                  <div key={perm._id} className="w-full max-w-[280px]">
+                    <FileCard
+                      file={{ ...perm.file, permission: perm.access }}
+                      onDelete={handleDelete}
+                      isShared
+                      permissionId={perm._id}
+                      onRemoveFromDashboard={handleRemoveFromDashboard}
+                    />
+                  </div>
+                ))}
+              </div>
+              {sharedData.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <button
+                    type="button"
+                    disabled={sharedData.page <= 1}
+                    onClick={() => fetchSharedWithMe(sharedData.page - 1, searchTerm)}
+                    className="px-3 py-1.5 rounded-lg border border-[#8E8D8A] text-[#8E8D8A] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#D8C3A5]/50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-[#8E8D8A] px-2">
+                    Page {sharedData.page} of {sharedData.totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={sharedData.page >= sharedData.totalPages}
+                    onClick={() => fetchSharedWithMe(sharedData.page + 1, searchTerm)}
+                    className="px-3 py-1.5 rounded-lg border border-[#8E8D8A] text-[#8E8D8A] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#D8C3A5]/50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-[#D8C3A5] bg-opacity-20 rounded-xl p-8 text-center border-2 border-dashed border-[#8E8D8A] border-opacity-20">
+              <p className="text-[#8E8D8A]/80">No files shared with you</p>
+            </div>
+          )}
+        </section>
 
         {/* Requests & Shares Tabs */}
         <section className="bg-white rounded-xl shadow-sm overflow-hidden border border-[#D8C3A5]">
