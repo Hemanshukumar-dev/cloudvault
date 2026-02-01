@@ -6,6 +6,7 @@ import UploadModal from "../components/UploadModal"
 const Dashboard = () => {
   const [files, setFiles] = useState([])
   const [accessRequests, setAccessRequests] = useState([])
+  const [activeShares, setActiveShares] = useState([])
   const [myRequests, setMyRequests] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -33,6 +34,15 @@ const Dashboard = () => {
     }
   }
 
+  const fetchActiveShares = async () => {
+    try {
+      const res = await API.get("/permissions/owner/active")
+      setActiveShares(res.data)
+    } catch (err) {
+      console.error("Failed to fetch active shares:", err)
+    }
+  }
+
   const fetchMyRequests = async () => {
     try {
       const res = await API.get("/permissions/my")
@@ -45,6 +55,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchFiles()
     fetchAccessRequests()
+    fetchActiveShares()
     fetchMyRequests()
   }, [])
 
@@ -74,6 +85,7 @@ const Dashboard = () => {
     try {
       await API.put(`/permissions/approve/${id}`, { access: access || "view" })
       fetchAccessRequests()
+      fetchActiveShares()
     } catch (err) {
       alert(err.response?.data?.error || "Failed to approve")
     }
@@ -85,6 +97,16 @@ const Dashboard = () => {
       fetchAccessRequests()
     } catch (err) {
       alert(err.response?.data?.error || "Failed to reject")
+    }
+  }
+
+  const handleRevoke = async (id) => {
+    if (!confirm("Are you sure you want to revoke access?")) return
+    try {
+      await API.delete(`/permissions/revoke/${id}`)
+      fetchActiveShares()
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to revoke access")
     }
   }
 
@@ -138,6 +160,29 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {activeShares.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Active Shares</h2>
+          <div className="space-y-2">
+            {activeShares.map((share) => (
+              <div key={share._id} className="bg-white border rounded-lg p-4 shadow-sm flex justify-between items-center flex-wrap gap-2">
+                <div>
+                  <p className="font-medium">{share.requester?.email || "—"}</p>
+                  <p className="text-sm text-gray-600">{share.file?.filename || "File"}</p>
+                  <p className="text-xs text-gray-500">Access: {share.access}</p>
+                </div>
+                <button
+                  onClick={() => handleRevoke(share._id)}
+                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {myRequests.length > 0 && (
         <div className="mb-6">

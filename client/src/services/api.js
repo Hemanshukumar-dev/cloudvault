@@ -1,7 +1,9 @@
 import axios from "axios"
 
 const API = axios.create({
-  baseURL: "https://cloudvault-bcpk.onrender.com/api"
+  baseURL: window.location.hostname === "localhost" 
+    ? "http://localhost:5000/api" 
+    : "https://cloudvault-bcpk.onrender.com/api"
 })
 
 // attach token to every request

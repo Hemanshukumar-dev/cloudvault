@@ -55,6 +55,27 @@ connectDB()
 
 const PORT = process.env.PORT || 5000;
 
+app.get("/health", (req, res) => {
+  res.send("Alive");
+});
+
+// Keep-alive system for Render (pings every 14 minutes)
+const KEEP_ALIVE_INTERVAL = 14 * 60 * 1000; // 14 minutes
+const BACKEND_URL = "https://cloudvault-bcpk.onrender.com/health";
+
+setInterval(async () => {
+  try {
+    const res = await fetch(BACKEND_URL);
+    if (res.ok) {
+      console.log(`Keep-alive ping sent to ${BACKEND_URL}`);
+    } else {
+      console.log(`Keep-alive ping failed: ${res.statusText}`);
+    }
+  } catch (err) {
+    console.error("Keep-alive ping error:", err.message);
+  }
+}, KEEP_ALIVE_INTERVAL);
+
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
 });

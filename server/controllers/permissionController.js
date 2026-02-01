@@ -135,3 +135,37 @@ export const rejectAccess = async (req, res) => {
     res.status(500).json({ error: "Failed to reject request" })
   }
 }
+
+export const getOwnerActiveShares = async (req, res) => {
+  try {
+    const active = await Permission.find({
+      owner: req.user._id,
+      status: "approved"
+    })
+      .populate("file", "filename url type")
+      .populate("requester", "name email")
+      .sort({ createdAt: -1 })
+    res.json(active)
+  } catch (err) {
+    console.error("Get active shares error:", err)
+    res.status(500).json({ error: "Failed to fetch active shares" })
+  }
+}
+
+export const revokeAccess = async (req, res) => {
+  try {
+    const perm = await Permission.findById(req.params.id)
+    if (!perm) {
+      return res.status(404).json({ error: "Permission not found" })
+    }
+    if (perm.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Only owner can revoke access" })
+    }
+    
+    await perm.deleteOne()
+    res.json({ message: "Access revoked" })
+  } catch (err) {
+    console.error("Revoke access error:", err)
+    res.status(500).json({ error: "Failed to revoke access" })
+  }
+}
