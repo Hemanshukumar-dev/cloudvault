@@ -106,9 +106,11 @@ const Dashboard = () => {
         </div>
       )}
 
-      {accessRequests.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Access Requests</h2>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-3">Access Requests</h2>
+        {accessRequests.length === 0 ? (
+          <p className="text-gray-500 text-sm italic">No pending requests.</p>
+        ) : (
           <div className="space-y-2">
             {accessRequests.map((req) => (
               <div key={req._id} className="bg-white border rounded-lg p-4 shadow-sm flex justify-between items-center flex-wrap gap-2">
@@ -134,8 +136,8 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {myRequests.length > 0 && (
         <div className="mb-6">
