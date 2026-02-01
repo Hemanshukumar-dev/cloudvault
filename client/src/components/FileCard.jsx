@@ -82,8 +82,8 @@ const FileCard = ({ file, onDelete }) => {
             </>
           )}
         </button>
-        {/* Only show delete if NOT a shared file logic (Owner) OR if shared file has 'edit' permission */}
-        {(!file.permission || file.permission === 'edit') && (
+        {/* Only show delete if NOT a shared file (Owner) OR shared file has 'edit' permission; guard if onDelete not provided */}
+        {onDelete && (!file.permission || file.permission === 'edit') && (
           <button
             onClick={() => onDelete(file._id)}
             className="flex-1 bg-white bg-opacity-40 text-[#8E8D8A] hover:bg-[#E98074] hover:text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"

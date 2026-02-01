@@ -42,12 +42,13 @@ const Dashboard = () => {
   }
 
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (!user) return
+    if (user.role === "admin") {
       navigate("/admin")
       return
     }
     fetchAllData()
-  }, [user])
+  }, [user, navigate])
 
   const handleLogout = () => {
     logout()

@@ -6,6 +6,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js";
 import permissionRoutes from "./routes/permissionRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 
 const app = express();
@@ -37,6 +38,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/permissions", permissionRoutes);
+app.use("/api/admin", adminRoutes);
 
 
 

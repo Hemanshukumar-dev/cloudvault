@@ -2,6 +2,7 @@ import API from "../services/api"
 import { useContext, useState } from "react"
 import { AuthContext } from "../context/AuthContext"
 import { useNavigate, Link } from "react-router-dom"
+import { isValidEmail, normalizeEmail, EMAIL_ERROR_MESSAGE } from "../utils/emailValidation"
 
 const Login = () => {
   const { loginUser } = useContext(AuthContext)
@@ -9,17 +10,41 @@ const Login = () => {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState("")
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value
+    setEmail(value)
+    if (value.trim()) {
+      setEmailError(isValidEmail(value) ? "" : EMAIL_ERROR_MESSAGE)
+    } else {
+      setEmailError("")
+    }
+  }
+
+  const handleEmailBlur = () => {
+    if (email.trim()) {
+      setEmailError(isValidEmail(email) ? "" : EMAIL_ERROR_MESSAGE)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    const rawEmail = (email.trim() || e.target.elements.email?.value) ?? ""
+    if (!isValidEmail(rawEmail)) {
+      setEmailError(EMAIL_ERROR_MESSAGE)
+      return
+    }
+    setEmailError("")
     setLoading(true)
-    
-    const f = new FormData(e.target)
+
+    const normalized = normalizeEmail(rawEmail)
     try {
       const res = await API.post("/auth/login", {
-        email: f.get("email"),
-        password: f.get("password"),
+        email: normalized,
+        password: e.target.elements.password?.value ?? "",
       })
       loginUser(res.data)
       navigate("/")
@@ -29,6 +54,9 @@ const Login = () => {
       setLoading(false)
     }
   }
+
+  const emailInvalid = !!emailError
+  const canSubmit = !emailInvalid && !loading
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#EAE7DC] p-4 text-[#8E8D8A]">
@@ -55,11 +83,21 @@ const Login = () => {
             <label className="block text-sm font-medium mb-1 pl-1">Email Address</label>
             <input
               name="email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               placeholder="you@example.com"
-              className="w-full bg-[#EAE7DC] border-none rounded-lg px-4 py-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-[#E85A4F] outline-none transition-all"
-              required
+              value={email}
+              onChange={handleEmailChange}
+              onBlur={handleEmailBlur}
+              className={`w-full bg-[#EAE7DC] rounded-lg px-4 py-3 text-gray-800 placeholder-gray-500 outline-none transition-all border-2 ${emailInvalid ? "border-red-500 focus:ring-2 focus:ring-red-500" : "border-transparent focus:ring-2 focus:ring-[#E85A4F]"}`}
             />
+            {emailError && (
+              <p className="text-red-600 text-sm mt-1 pl-1 flex items-center gap-1">
+                <span className="sr-only">Error:</span>
+                {emailError}
+              </p>
+            )}
           </div>
 
           <div>
@@ -91,8 +129,9 @@ const Login = () => {
             </div>
           </div>
 
-          <button 
-            disabled={loading}
+          <button
+            type="submit"
+            disabled={!canSubmit}
             className="w-full bg-[#E85A4F] text-white font-bold py-3 rounded-lg hover:bg-[#D74F44] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg mt-2"
           >
             {loading ? "Logging in..." : "Login"}
@@ -101,7 +140,7 @@ const Login = () => {
 
         <div className="mt-8 text-center border-t border-[#EAE7DC] border-opacity-30 pt-6">
           <p className="text-sm">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link to="/signup" className="text-[#E85A4F] font-semibold hover:underline">
               Sign up
             </Link>

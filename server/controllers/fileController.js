@@ -49,27 +49,17 @@ export const deleteFile = async (req, res) => {
     const isAdmin = req.user.role === "admin"
     let isEditor = false
 
-    // Debug Logs
-    console.log(`[DeleteFile] Attempting delete. User: ${req.user._id}, Role: ${req.user.role}, File: ${file._id}, Owner: ${file.user}`)
-
     if (!isOwner && !isAdmin) {
-      // Check for edit permission
       const perm = await Permission.findOne({
         file: file._id,
         requester: req.user._id,
         status: "approved",
         access: "edit"
       })
-      
-      console.log(`[DeleteFile] Permission Check Result:`, perm)
-      
-      if (perm) {
-        isEditor = true
-      }
+      if (perm) isEditor = true
     }
 
     if (!isOwner && !isAdmin && !isEditor) {
-      console.log(`[DeleteFile] Authorization failed. isOwner: ${isOwner}, isAdmin: ${isAdmin}, isEditor: ${isEditor}`)
       return res.status(403).json({ error: "Not authorized to delete this file" })
     }
     

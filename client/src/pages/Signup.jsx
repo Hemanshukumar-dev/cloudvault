@@ -2,6 +2,7 @@ import API from "../services/api"
 import { useNavigate, Link } from "react-router-dom"
 import { useState, useContext } from "react"
 import { AuthContext } from "../context/AuthContext"
+import { isValidEmail, normalizeEmail, EMAIL_ERROR_MESSAGE, EMAIL_EXISTS_MESSAGE } from "../utils/emailValidation"
 
 const Signup = () => {
   const navigate = useNavigate()
@@ -9,33 +10,60 @@ const Signup = () => {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState("")
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value
+    setEmail(value)
+    if (value.trim()) {
+      setEmailError(isValidEmail(value) ? "" : EMAIL_ERROR_MESSAGE)
+    } else {
+      setEmailError("")
+    }
+  }
+
+  const handleEmailBlur = () => {
+    if (email.trim()) {
+      setEmailError(isValidEmail(email) ? "" : EMAIL_ERROR_MESSAGE)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    const rawEmail = email.trim() || (e.target.querySelector('input[name="email"]')?.value ?? "")
+    if (!isValidEmail(rawEmail)) {
+      setEmailError(EMAIL_ERROR_MESSAGE)
+      return
+    }
+    setEmailError("")
     setLoading(true)
-    
-    const f = new FormData(e.target)
+
+    const normalized = normalizeEmail(rawEmail)
+    const form = e.target
     try {
       const res = await API.post("/auth/signup", {
-        name: f.get("name"),
-        email: f.get("email"),
-        password: f.get("password"),
+        name: form.elements.name?.value?.trim() ?? "",
+        email: normalized,
+        password: form.elements.password?.value ?? "",
       })
-      // Auto-login with the token returned from signup
       if (res.data.token) {
         loginUser(res.data)
         navigate("/")
       } else {
-        // Fallback if backend doesn't return token (shouldn't happen with our fix)
         navigate("/login")
       }
     } catch (err) {
-      setError(err.response?.data?.error || "Signup failed")
+      const msg = err.response?.data?.error || "Signup failed"
+      setError(msg.includes("already") || msg === "Email already in use" ? EMAIL_EXISTS_MESSAGE : msg)
     } finally {
       setLoading(false)
     }
   }
+
+  const emailInvalid = !!emailError
+  const canSubmit = !emailInvalid && !loading
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#EAE7DC] p-4 text-[#8E8D8A]">
@@ -72,11 +100,21 @@ const Signup = () => {
             <label className="block text-sm font-medium mb-1 pl-1">Email Address</label>
             <input
               name="email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               placeholder="you@example.com"
-              className="w-full bg-[#EAE7DC] border-none rounded-lg px-4 py-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-[#E85A4F] outline-none transition-all"
-              required
+              value={email}
+              onChange={handleEmailChange}
+              onBlur={handleEmailBlur}
+              className={`w-full bg-[#EAE7DC] rounded-lg px-4 py-3 text-gray-800 placeholder-gray-500 outline-none transition-all border-2 ${emailInvalid ? "border-red-500 focus:ring-2 focus:ring-red-500" : "border-transparent focus:ring-2 focus:ring-[#E85A4F]"}`}
             />
+            {emailError && (
+              <p className="text-red-600 text-sm mt-1 pl-1 flex items-center gap-1">
+                <span className="sr-only">Error:</span>
+                {emailError}
+              </p>
+            )}
           </div>
 
           <div>
@@ -109,8 +147,9 @@ const Signup = () => {
             </div>
           </div>
 
-          <button 
-            disabled={loading}
+          <button
+            type="submit"
+            disabled={!canSubmit}
             className="w-full bg-[#E85A4F] text-white font-bold py-3 rounded-lg hover:bg-[#D74F44] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg mt-4"
           >
             {loading ? "Creating account..." : "Sign Up"}
