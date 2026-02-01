@@ -109,10 +109,15 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans">
-      {/* Header - Warm Beige Background */}
-      <header className="bg-[#8E8D8A] py-4 shadow-sm">
-        <div className="container mx-auto px-6 flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-[#EAE7DC] tracking-tight">CloudVault</h1>
+      {/* Header - Floating Rounded Bar */}
+      <div className="px-6 pt-6">
+        <header className="bg-[#8E8D8A] rounded-2xl shadow-lg p-5 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+             <div className="bg-[#EAE7DC] p-2 rounded-lg text-[#8E8D8A]">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+             </div>
+             <h1 className="text-2xl font-bold text-[#EAE7DC] tracking-wide font-serif">CloudVault</h1>
+          </div>
           
           <div className="flex items-center gap-6">
             <div className="text-right flex flex-col justify-center">
@@ -128,8 +133,8 @@ const Dashboard = () => {
               Logout
             </button>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       <main className="container mx-auto px-6 py-8 space-y-10">
         {/* Files Section */}
