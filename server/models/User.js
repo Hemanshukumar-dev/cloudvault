@@ -5,6 +5,12 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   password: String,
   role: { type: String, default: "user" }
-},{ timestamps:true })
+}, { timestamps: true })
+
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject()
+  delete obj.password
+  return obj
+}
 
 export default mongoose.model("User", userSchema)

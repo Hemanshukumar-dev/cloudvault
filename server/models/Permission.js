@@ -5,7 +5,7 @@ const permissionSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   requester: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   access: { type: String, enum: ["view", "edit"], default: "view" },
-  status: { type: String, enum: ["pending", "approved"], default: "pending" }
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" }
 },{timestamps:true})
 
 export default mongoose.model("Permission", permissionSchema)

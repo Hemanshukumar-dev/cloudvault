@@ -7,7 +7,7 @@ const fileFilter = (req, file, cb) => {
     file.mimetype === "application/pdf" ||
     file.mimetype.startsWith("image/")
   ) cb(null, true)
-  else cb("Only PDF & images allowed", false)
+  else cb(new Error("Only PDF & images allowed"), false)
 }
 
 const upload = multer({
