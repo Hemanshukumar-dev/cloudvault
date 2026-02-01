@@ -7,6 +7,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  const [activeView, setActiveView] = useState("files")
+  const [users, setUsers] = useState([])
+
   const fetchFiles = async () => {
     try {
       setLoading(true)
@@ -20,9 +23,23 @@ const AdminDashboard = () => {
     }
   }
 
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      const res = await API.get("/auth/admin/users")
+      setUsers(res.data)
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to fetch users")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    fetchFiles()
-  }, [])
+    if (activeView === "files") fetchFiles()
+    else fetchUsers()
+  }, [activeView])
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this file? This action cannot be undone.")) return
@@ -36,8 +53,32 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">All Files (Admin)</h1>
+    <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans p-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-black">Admin Dashboard</h1>
+        <button 
+          onClick={() => window.location.href = "/login"} 
+          className="bg-zinc-800 text-white px-4 py-2 rounded hover:bg-zinc-700 transition"
+        >
+           Logout
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex gap-4 mb-8 border-b border-gray-300 pb-4">
+        <button 
+          onClick={() => setActiveView("files")}
+          className={`px-4 py-2 font-bold rounded transition ${activeView === "files" ? "bg-[#8E8D8A] text-white" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+        >
+          All Files
+        </button>
+        <button 
+          onClick={() => setActiveView("users")}
+          className={`px-4 py-2 font-bold rounded transition ${activeView === "users" ? "bg-[#8E8D8A] text-white" : "bg-white text-gray-500 hover:bg-gray-100"}`}
+        >
+          Users
+        </button>
+      </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -46,57 +87,103 @@ const AdminDashboard = () => {
       )}
 
       {loading ? (
-        <p className="text-gray-500">Loading files...</p>
-      ) : (
+        <p className="text-gray-500 italic">Loading data...</p>
+      ) : activeView === "files" ? (
+        /* FILES VIEW */
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {files.map((file) => (
-              <div key={file._id} className="bg-white border rounded-lg p-4 shadow-sm">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="font-bold text-lg truncate" title={file.filename}>{file.filename}</h3>
-                    <p className="text-sm text-gray-500">{file.type} • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                  <button
+              <div key={file._id} className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm relative">
+                 <button
                     onClick={() => handleDelete(file._id)}
-                    className="text-red-500 hover:text-red-700 text-sm font-medium"
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 text-sm font-semibold"
                   >
                     Delete
                   </button>
-                </div>
-                
-                <div className="text-sm text-gray-700 mb-3 space-y-1">
-                  <p><span className="font-semibold">Owner:</span> {file.user?.email || "Unknown"}</p>
-                  <p><span className="font-semibold">Uploaded:</span> {new Date(file.createdAt).toLocaleString()}</p>
+
+                <div className="mb-4 pr-12">
+                  <h3 className="font-bold text-lg text-black truncate" title={file.filename}>{file.filename}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{file.type} • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-xs text-gray-600 mt-2"><span className="font-semibold text-gray-700">Owner:</span> {file.user?.email || "Unknown"}</p>
+                  <p className="text-xs text-gray-500"><span className="">Uploaded:</span> {new Date(file.createdAt).toLocaleString()}</p>
                 </div>
 
-                <div className="border-t pt-2">
-                  <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Access List</h4>
+                <div className="border-t border-gray-100 pt-3">
+                  <h4 className="text-[10px] font-bold uppercase text-gray-400 mb-2 tracking-wide">ACCESS LIST</h4>
                   {file.permissions && file.permissions.length > 0 ? (
-                    <ul className="space-y-1">
+                    <ul className="space-y-2">
                       {file.permissions.map(perm => (
-                        <li key={perm._id} className="text-sm flex justify-between">
-                          <span className="truncate max-w-[150px]" title={perm.requester?.email}>
+                        <li key={perm._id} className="text-sm flex justify-between items-center">
+                          <span className="truncate max-w-[150px] text-gray-800 font-medium" title={perm.requester?.email}>
                             {perm.requester?.email}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${perm.access === 'edit' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${perm.access === 'edit' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
                             {perm.access}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-gray-400 italic">No shared access</p>
+                    <p className="text-xs text-gray-400 italic">No shared access</p>
                   )}
                 </div>
               </div>
             ))}
           </div>
-
-          {files.length === 0 && (
-            <p className="text-gray-500">No files in the system.</p>
-          )}
+          {files.length === 0 && <p className="text-gray-500">No files in the system.</p>}
         </>
+      ) : (
+        /* USERS VIEW */
+        <div className="space-y-6">
+          {users.map(user => (
+            <div key={user._id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">{user.name}</h3>
+                  <p className="text-sm text-gray-500">{user.email} <span className="mx-2">•</span> Role: <span className="uppercase font-semibold text-xs">{user.role}</span></p>
+                </div>
+                <div className="text-right">
+                   <p className="text-xs text-gray-400">Joined: {new Date(user.createdAt).toLocaleDateString()}</p>
+                   <p className="text-sm font-bold text-[#8E8D8A] mt-1">{user.files?.length || 0} Files Uploaded</p>
+                </div>
+              </div>
+              
+              <div className="p-4">
+                {user.files && user.files.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                        <tr>
+                          <th className="px-4 py-2">Filename</th>
+                          <th className="px-4 py-2">Type</th>
+                          <th className="px-4 py-2">Size</th>
+                          <th className="px-4 py-2">Uploaded At</th>
+                          <th className="px-4 py-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                         {user.files.map(file => (
+                           <tr key={file._id} className="border-b hover:bg-gray-50">
+                             <td className="px-4 py-2 font-medium text-gray-900">{file.filename}</td>
+                             <td className="px-4 py-2 text-gray-500">{file.type}</td>
+                             <td className="px-4 py-2 text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</td>
+                             <td className="px-4 py-2 text-gray-500">{new Date(file.createdAt).toLocaleString()}</td>
+                             <td className="px-4 py-2">
+                               <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs font-bold">VIEW</a>
+                             </td>
+                           </tr>
+                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic p-2">No files uploaded by this user.</p>
+                )}
+              </div>
+            </div>
+          ))}
+          {users.length === 0 && <p className="text-gray-500">No users found.</p>}
+        </div>
       )}
     </div>
   )

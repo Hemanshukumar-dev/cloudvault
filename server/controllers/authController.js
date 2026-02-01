@@ -10,7 +10,9 @@ export const signup = async (req, res) => {
     }
     const hashed = await bcrypt.hash(password, 10)
     const user = await User.create({ name, email, password: hashed })
-    res.json(user.toJSON ? user.toJSON() : user)
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET)
+    const safeUser = user.toJSON ? user.toJSON() : user
+    res.json({ token, user: safeUser })
   } catch (err) {
     if (err.code === 11000) {
       return res.status(400).json({ error: "Email already exists" })
@@ -38,7 +40,25 @@ export const login = async (req, res) => {
     const safeUser = user.toJSON ? user.toJSON() : { _id: user._id, name: user.name, email: user.email, role: user.role }
     res.json({ token, user: safeUser })
   } catch (err) {
-    console.error("Login error:", err)
     res.status(500).json({ error: "Login failed" })
+  }
+}
+
+import File from "../models/File.js"
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ createdAt: -1 })
+    const usersWithFiles = await Promise.all(users.map(async (user) => {
+      const files = await File.find({ user: user._id }).select("filename size createdAt type url")
+      return {
+        ...user.toJSON(),
+        files
+      }
+    }))
+    res.json(usersWithFiles)
+  } catch (err) {
+    console.error("Get Users error:", err)
+    res.status(500).json({ error: "Failed to fetch users" })
   }
 }

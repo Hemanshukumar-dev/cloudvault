@@ -10,7 +10,6 @@ import Navbar from "./components/Navbar"
 function Layout() {
   return (
     <>
-      <Navbar />
       <main className="container mx-auto p-4">
         <Outlet />
       </main>
@@ -24,7 +23,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/share/:fileId" element={<><Navbar /><main className="container mx-auto p-4"><SharePage /></main></>} />
+        <Route path="/share/:fileId" element={<main className="container mx-auto p-4"><SharePage /></main>} />
 
         <Route
           path="/"
