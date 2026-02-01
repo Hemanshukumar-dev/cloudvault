@@ -4,20 +4,29 @@ import API from "../services/api"
 import FileCard from "../components/FileCard"
 import UploadModal from "../components/UploadModal"
 import { AuthContext } from "../context/AuthContext"
+import { getPendingSharedFileId, clearPendingSharedFileId } from "../utils/sharedFileStorage"
 
 const Dashboard = () => {
-  const { user, logout } = useContext(AuthContext) // Access user info
+  const { user, logout } = useContext(AuthContext)
   const navigate = useNavigate()
   const [files, setFiles] = useState([])
   const [accessRequests, setAccessRequests] = useState([])
   const [activeShares, setActiveShares] = useState([])
   const [myRequests, setMyRequests] = useState([])
-  
+
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("incoming")
   const [searchTerm, setSearchTerm] = useState("")
+
+  const [sharedModalOpen, setSharedModalOpen] = useState(false)
+  const [pendingFileId, setPendingFileId] = useState(null)
+  const [pendingFileInfo, setPendingFileInfo] = useState(null)
+  const [sharedAccess, setSharedAccess] = useState("view")
+  const [sharedRequesting, setSharedRequesting] = useState(false)
+  const [sharedError, setSharedError] = useState("")
+  const [toast, setToast] = useState("")
 
   const fetchAllData = async () => {
     try {
@@ -49,6 +58,56 @@ const Dashboard = () => {
     }
     fetchAllData()
   }, [user, navigate])
+
+  useEffect(() => {
+    if (!user || user.role === "admin") return
+    const pendingId = getPendingSharedFileId()
+    if (!pendingId) return
+    const loadAndShowShared = async () => {
+      try {
+        const res = await API.get(`/files/share/${pendingId}`)
+        setPendingFileId(pendingId)
+        setPendingFileInfo(res.data)
+        setSharedModalOpen(true)
+        setSharedError("")
+      } catch {
+        clearPendingSharedFileId()
+      }
+    }
+    loadAndShowShared()
+  }, [user])
+
+  const closeSharedModal = () => {
+    setSharedModalOpen(false)
+    setPendingFileId(null)
+    setPendingFileInfo(null)
+    setSharedError("")
+    clearPendingSharedFileId()
+  }
+
+  const handleSharedRequestAccess = async (e) => {
+    e.preventDefault()
+    if (!pendingFileId) return
+    setSharedError("")
+    setSharedRequesting(true)
+    try {
+      await API.post("/permissions/request", { fileId: pendingFileId, access: sharedAccess })
+      closeSharedModal()
+      setToast("Access request sent to owner")
+      fetchAllData()
+      setTimeout(() => setToast(""), 4000)
+    } catch (err) {
+      setSharedError(err.response?.data?.error || "Failed to send request")
+    } finally {
+      setSharedRequesting(false)
+    }
+  }
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return ""
+    const mb = bytes / (1024 * 1024)
+    return mb < 1 ? `${(bytes / 1024).toFixed(1)} KB` : `${mb.toFixed(1)} MB`
+  }
 
   const handleLogout = () => {
     logout()
@@ -110,6 +169,67 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans">
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-green-700 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+          <span>{toast}</span>
+        </div>
+      )}
+
+      {sharedModalOpen && pendingFileInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
+            <button
+              type="button"
+              onClick={closeSharedModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pr-8">Shared File</h2>
+            <div className="mb-4">
+              <p className="font-medium text-gray-900">{pendingFileInfo.filename}</p>
+              <p className="text-sm text-gray-500 mt-1">{pendingFileInfo.type}</p>
+              {pendingFileInfo.size != null && (
+                <p className="text-sm text-gray-500">{formatFileSize(pendingFileInfo.size)}</p>
+              )}
+            </div>
+            <form onSubmit={handleSharedRequestAccess}>
+              {sharedError && (
+                <p className="text-red-600 text-sm mb-3">{sharedError}</p>
+              )}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Permission</label>
+                <select
+                  value={sharedAccess}
+                  onChange={(e) => setSharedAccess(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E85A4F]"
+                >
+                  <option value="view">Can View</option>
+                  <option value="edit">Can Edit</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeSharedModal}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Skip
+                </button>
+                <button
+                  type="submit"
+                  disabled={sharedRequesting}
+                  className="flex-1 bg-[#E85A4F] text-white px-4 py-2 rounded-lg hover:bg-[#D74F44] disabled:opacity-70"
+                >
+                  {sharedRequesting ? "Sending…" : "Request Access"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Header - Floating Rounded Bar */}
       <div className="px-4 pt-4 md:px-6 md:pt-6">
         <header className="bg-[#8E8D8A] rounded-2xl shadow-lg p-5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all">
