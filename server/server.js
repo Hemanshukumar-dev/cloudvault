@@ -10,7 +10,7 @@ import errorMiddleware from "./middleware/errorMiddleware.js"
 const app = express()
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "https://yourfrontend.com"],
+  origin: ["http://localhost:5173", "https://cloudvault-two.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }
