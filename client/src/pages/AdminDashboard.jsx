@@ -9,6 +9,7 @@ const AdminDashboard = () => {
 
   const [activeView, setActiveView] = useState("files")
   const [users, setUsers] = useState([])
+  const [userSearch, setUserSearch] = useState("")
 
   const fetchFiles = async () => {
     try {
@@ -52,13 +53,18 @@ const AdminDashboard = () => {
     }
   }
 
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+    u.email.toLowerCase().includes(userSearch.toLowerCase())
+  )
+
   return (
     <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-black">Admin Dashboard</h1>
         <button 
           onClick={() => window.location.href = "/login"} 
-          className="bg-zinc-800 text-white px-4 py-2 rounded hover:bg-zinc-700 transition"
+          className="bg-white text-[#E85A4F] hover:bg-[#E85A4F] hover:text-white font-medium text-sm border border-[#E85A4F] px-4 py-1.5 rounded-lg transition-all shadow-sm"
         >
            Logout
         </button>
@@ -135,7 +141,20 @@ const AdminDashboard = () => {
       ) : (
         /* USERS VIEW */
         <div className="space-y-6">
-          {users.map(user => (
+          <div className="flex justify-end mb-4">
+            <div className="relative">
+               <input 
+                  type="text" 
+                  placeholder="Search users..." 
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="bg-white border border-[#D8C3A5] text-sm rounded-full pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#E85A4F] w-64 transition-all"
+               />
+               <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+             </div>
+          </div>
+
+          {filteredUsers.map(user => (
             <div key={user._id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                 <div>
