@@ -110,17 +110,17 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans">
       {/* Header - Floating Rounded Bar */}
-      <div className="px-6 pt-6">
-        <header className="bg-[#8E8D8A] rounded-2xl shadow-lg p-5 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-             <div className="bg-[#EAE7DC] p-2 rounded-lg text-[#8E8D8A]">
+      <div className="px-4 pt-4 md:px-6 md:pt-6">
+        <header className="bg-[#8E8D8A] rounded-2xl shadow-lg p-5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+             <div className="bg-[#EAE7DC] p-2 rounded-lg text-[#8E8D8A] shrink-0">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
              </div>
              <h1 className="text-2xl font-bold text-[#EAE7DC] tracking-wide font-serif">CloudVault</h1>
           </div>
           
-          <div className="flex items-center gap-6">
-            <div className="text-right flex flex-col justify-center">
+          <div className="flex items-center justify-between w-full md:w-auto gap-6 border-t md:border-t-0 border-[#EAE7DC] border-opacity-20 pt-4 md:pt-0">
+            <div className="text-left md:text-right flex flex-col justify-center">
               <span className="text-sm font-bold text-[#EAE7DC] leading-tight">{user?.name}</span>
               <span className="text-[10px] text-[#EAE7DC] uppercase font-semibold tracking-wider opacity-80">
                 {user?.role || "User"}
@@ -136,19 +136,19 @@ const Dashboard = () => {
         </header>
       </div>
 
-      <main className="container mx-auto px-6 py-8 space-y-10">
+      <main className="container mx-auto px-4 md:px-6 py-8 space-y-10">
         {/* Files Section */}
         <section>
-          <div className="flex justify-between items-center mb-6">
-             <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
                <h2 className="text-xl font-bold text-[#8E8D8A]">My Files</h2>
-               <div className="relative">
+               <div className="relative w-full sm:w-auto">
                  <input 
                     type="text" 
                     placeholder="Search files..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-white border border-[#D8C3A5] text-sm rounded-full pl-9 pr-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#E85A4F] w-48 transition-all"
+                    className="bg-white border border-[#D8C3A5] text-sm rounded-full pl-9 pr-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#E85A4F] w-full sm:w-64 transition-all"
                  />
                  <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                </div>
@@ -156,7 +156,7 @@ const Dashboard = () => {
              
              <button
               onClick={() => setModalOpen(true)}
-              className="bg-[#E85A4F] text-white px-4 py-2 rounded-lg hover:bg-[#D74F44] transition-all shadow-md hover:shadow-lg flex items-center gap-2 font-bold text-sm transform hover:-translate-y-0.5"
+              className="w-full md:w-auto bg-[#E85A4F] text-white px-4 py-2 rounded-lg hover:bg-[#D74F44] transition-all shadow-md hover:shadow-lg flex justify-center items-center gap-2 font-bold text-sm transform hover:-translate-y-0.5"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
               Upload
@@ -166,7 +166,7 @@ const Dashboard = () => {
           {loading ? (
              <div className="text-center py-10 opacity-50 animate-pulse">Loading drive contents...</div>
           ) : filteredFiles.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filteredFiles.map(file => (
                 <FileCard key={file._id} file={file} onDelete={handleDelete} />
               ))}
@@ -180,6 +180,22 @@ const Dashboard = () => {
             </div>
           )}
         </section>
+
+        {/* Shared With Me Section */}
+        {myRequests.some(r => r.status === 'approved') && (
+          <section>
+            <h2 className="text-xl font-bold text-[#8E8D8A] mb-6">Shared With Me</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {myRequests.filter(r => r.status === 'approved' && r.file).map(req => (
+                <FileCard 
+                  key={req._id} 
+                  file={{...req.file, permission: req.access}} 
+                  onDelete={handleDelete} 
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Requests & Shares Tabs */}
         <section className="bg-white rounded-xl shadow-sm overflow-hidden border border-[#D8C3A5]">
@@ -220,7 +236,7 @@ const Dashboard = () => {
                          <p className="text-xs text-gray-400 mt-1">File: {req.file?.filename}</p>
                        </div>
                        <div className="flex gap-2">
-                         <button onClick={() => handleApprove(req._id, req.access)} className="w-8 h-8 flex items-center justify-center bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-colors" title="Approve">
+                         <button onClick={() => handleApprove(req._id, req.access)} className="w-8 h-8 flex items-center justify-center bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-colors" title={`Approve ${req.access}`}>
                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                          </button>
                          <button onClick={() => handleReject(req._id)} className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors" title="Reject">
@@ -249,7 +265,9 @@ const Dashboard = () => {
                              <div className="flex items-center gap-2 text-xs text-gray-500">
                                <span>{share.file?.filename}</span>
                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                               <span className="uppercase">{share.access}</span>
+                               <span className={`uppercase font-bold text-[10px] px-1.5 py-0.5 rounded ${share.access === 'edit' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                 {share.access}
+                               </span>
                              </div>
                            </div>
                         </div>

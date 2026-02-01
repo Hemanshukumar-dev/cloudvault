@@ -44,14 +44,51 @@ export const deleteFile = async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: "File not found" })
     }
-    if (file.user.toString() !== req.user._id.toString()) {
+    
+    const isOwner = file.user.toString() === req.user._id.toString()
+    const isAdmin = req.user.role === "admin"
+    let isEditor = false
+
+    // Debug Logs
+    console.log(`[DeleteFile] Attempting delete. User: ${req.user._id}, Role: ${req.user.role}, File: ${file._id}, Owner: ${file.user}`)
+
+    if (!isOwner && !isAdmin) {
+      // Check for edit permission
+      const perm = await Permission.findOne({
+        file: file._id,
+        requester: req.user._id,
+        status: "approved",
+        access: "edit"
+      })
+      
+      console.log(`[DeleteFile] Permission Check Result:`, perm)
+      
+      if (perm) {
+        isEditor = true
+      }
+    }
+
+    if (!isOwner && !isAdmin && !isEditor) {
+      console.log(`[DeleteFile] Authorization failed. isOwner: ${isOwner}, isAdmin: ${isAdmin}, isEditor: ${isEditor}`)
       return res.status(403).json({ error: "Not authorized to delete this file" })
     }
     
-    await cloudinary.uploader.destroy(file.publicId)
+    // Cleanup: Delete from Cloudinary
+    if (file.publicId) {
+        try {
+            await cloudinary.uploader.destroy(file.publicId)
+        } catch (cloudErr) {
+            console.error("Cloudinary delete error (non-fatal):", cloudErr)
+        }
+    }
+
+    // Cleanup: Delete all permissions associated with this file
+    await Permission.deleteMany({ file: file._id })
+
+    // Delete the file itself
     await file.deleteOne()
     
-    res.json({ message: "File deleted successfully" })
+    res.json({ message: "File deleted successfully and active shares removed." })
   } catch (err) {
     console.error("Delete error:", err)
     res.status(500).json({ error: "Failed to delete file" })

@@ -62,9 +62,9 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-[#EAE7DC] text-[#8E8D8A] font-sans">
       
       {/* Header - Floating Rounded Bar */}
-      <div className="px-6 pt-6 mb-8">
-        <header className="bg-[#8E8D8A] rounded-2xl shadow-lg p-5 flex justify-between items-center">
-           <div className="flex items-center gap-3">
+      <div className="px-4 pt-4 md:px-6 md:pt-6 mb-8">
+        <header className="bg-[#8E8D8A] rounded-2xl shadow-lg p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+           <div className="flex items-center gap-3 w-full md:w-auto">
              <div className="bg-[#EAE7DC] p-2 rounded-lg text-[#8E8D8A]">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
              </div>
@@ -73,7 +73,7 @@ const AdminDashboard = () => {
           
           <button 
             onClick={() => window.location.href = "/login"} 
-            className="bg-white text-[#E85A4F] hover:bg-[#E85A4F] hover:text-white font-medium text-sm border border-[#E85A4F] px-4 py-1.5 rounded-lg transition-all shadow-sm"
+            className="w-full md:w-auto bg-white text-[#E85A4F] hover:bg-[#E85A4F] hover:text-white font-medium text-sm border border-[#E85A4F] px-4 py-1.5 rounded-lg transition-all shadow-sm"
           >
              Logout
           </button>

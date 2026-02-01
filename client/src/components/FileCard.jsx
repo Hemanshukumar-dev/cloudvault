@@ -30,8 +30,18 @@ const FileCard = ({ file, onDelete }) => {
   return (
     <div className="bg-[#D8C3A5] rounded-xl p-5 shadow-md hover:shadow-lg transition-all duration-200 flex flex-col justify-between aspect-square group relative overflow-hidden">
       
+      {/* Permission Badge */}
+      {/* If we have a specific permission object (Shared file) */}
+      {file.permission && (
+         <div className={`absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide z-10 ${
+            file.permission === 'edit' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
+         }`}>
+           {file.permission === 'edit' ? 'Editor' : 'View Only'}
+         </div>
+      )}
+
       {/* File Info */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center items-center text-center">
+      <div className="flex-1 min-w-0 flex flex-col justify-center items-center text-center mt-4">
         {/* Mock Icon based on type */}
         <div className="text-[#E85A4F] mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
           {file.type?.includes("image") ? (
@@ -72,13 +82,16 @@ const FileCard = ({ file, onDelete }) => {
             </>
           )}
         </button>
-        <button
-          onClick={() => onDelete(file._id)}
-          className="flex-1 bg-white bg-opacity-40 text-[#8E8D8A] hover:bg-[#E98074] hover:text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          Delete
-        </button>
+        {/* Only show delete if NOT a shared file logic (Owner) OR if shared file has 'edit' permission */}
+        {(!file.permission || file.permission === 'edit') && (
+          <button
+            onClick={() => onDelete(file._id)}
+            className="flex-1 bg-white bg-opacity-40 text-[#8E8D8A] hover:bg-[#E98074] hover:text-white px-2 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1"
+          >
+           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Delete
+          </button>
+        )}
       </div>
     </div>
   )
