@@ -61,7 +61,17 @@ export const deleteFile = async (req, res) => {
 export const getAllFiles = async (req, res) => {
   try {
     const files = await File.find().populate("user", "email name").sort({ createdAt: -1 })
-    res.json(files)
+    const permissions = await Permission.find({ status: "approved" }).populate("requester", "email name")
+
+    const filesWithPermissions = files.map(file => {
+      const filePerms = permissions.filter(p => p.file.toString() === file._id.toString())
+      return {
+        ...file.toObject(),
+        permissions: filePerms
+      }
+    })
+
+    res.json(filesWithPermissions)
   } catch (err) {
     console.error("Get all files error:", err)
     res.status(500).json({ error: "Failed to fetch files" })

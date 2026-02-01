@@ -51,12 +51,45 @@ const AdminDashboard = () => {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {files.map((file) => (
-              <FileCard
-                key={file._id}
-                file={file}
-                onDelete={handleDelete}
-                owner={file.user?.email || file.user?.name}
-              />
+              <div key={file._id} className="bg-white border rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-bold text-lg truncate" title={file.filename}>{file.filename}</h3>
+                    <p className="text-sm text-gray-500">{file.type} • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(file._id)}
+                    className="text-red-500 hover:text-red-700 text-sm font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
+                
+                <div className="text-sm text-gray-700 mb-3 space-y-1">
+                  <p><span className="font-semibold">Owner:</span> {file.user?.email || "Unknown"}</p>
+                  <p><span className="font-semibold">Uploaded:</span> {new Date(file.createdAt).toLocaleString()}</p>
+                </div>
+
+                <div className="border-t pt-2">
+                  <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Access List</h4>
+                  {file.permissions && file.permissions.length > 0 ? (
+                    <ul className="space-y-1">
+                      {file.permissions.map(perm => (
+                        <li key={perm._id} className="text-sm flex justify-between">
+                          <span className="truncate max-w-[150px]" title={perm.requester?.email}>
+                            {perm.requester?.email}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${perm.access === 'edit' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {perm.access}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No shared access</p>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
 
