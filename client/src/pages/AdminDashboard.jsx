@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import API from "../services/api"
+import API, { baseURL } from "../services/api"
 import FileCard from "../components/FileCard"
 import { isValidEmail, normalizeEmail, EMAIL_ERROR_MESSAGE, EMAIL_EXISTS_MESSAGE } from "../utils/emailValidation"
 
@@ -380,7 +380,7 @@ const AdminDashboard = () => {
                              <td className="px-4 py-2 text-gray-500">{((file.size || 0) / 1024 / 1024).toFixed(2)} MB</td>
                              <td className="px-4 py-2 text-gray-500">{new Date(file.createdAt).toLocaleString()}</td>
                              <td className="px-4 py-2">
-                               <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs font-bold">VIEW</a>
+                               <a href={file.type === "application/pdf" ? `${baseURL}/files/${file._id}/view?token=${encodeURIComponent(localStorage.getItem("token") || "")}` : file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs font-bold">VIEW</a>
                              </td>
                            </tr>
                          ))}

@@ -1,15 +1,19 @@
+import { Readable } from "stream"
+import jwt from "jsonwebtoken"
 import cloudinary from "../utils/cloudinary.js"
 import File from "../models/File.js"
 import Permission from "../models/Permission.js"
+import User from "../models/User.js"
 
 export const uploadFile = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file provided" })
     }
-    
+    // PDFs must use resource_type "raw" so URLs are /raw/upload/ and publicly viewable; images use "image"
+    const resourceType = req.file.mimetype === "application/pdf" ? "raw" : "image"
     const result = await cloudinary.uploader.upload(req.file.path, {
-      resource_type: "auto"
+      resource_type: resourceType
     })
     
     const file = await File.create({
@@ -63,10 +67,11 @@ export const deleteFile = async (req, res) => {
       return res.status(403).json({ error: "Not authorized to delete this file" })
     }
     
-    // Cleanup: Delete from Cloudinary
+    // Cleanup: Delete from Cloudinary (pass resource_type for raw/PDF)
     if (file.publicId) {
         try {
-            await cloudinary.uploader.destroy(file.publicId)
+            const resourceType = file.type === "application/pdf" ? "raw" : "image"
+            await cloudinary.uploader.destroy(file.publicId, { resource_type: resourceType })
         } catch (cloudErr) {
             console.error("Cloudinary delete error (non-fatal):", cloudErr)
         }
@@ -112,7 +117,8 @@ export const adminDeleteFile = async (req, res) => {
       return res.status(404).json({ error: "File not found" })
     }
     
-    await cloudinary.uploader.destroy(file.publicId)
+    const resourceType = file.type === "application/pdf" ? "raw" : "image"
+    await cloudinary.uploader.destroy(file.publicId, { resource_type: resourceType })
     await file.deleteOne()
     
     res.json({ message: "File deleted by admin" })
@@ -171,5 +177,48 @@ export const viewFile = async (req, res) => {
   } catch (err) {
     console.error("View file error:", err)
     res.status(500).json({ error: "Failed to view file" })
+  }
+}
+
+/** Resolve user from token (header or query, for view stream so window.open works). */
+const getUserFromToken = async (req) => {
+  const token = req.headers.authorization?.split(" ")[1] || req.query.token
+  if (!token) return null
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const user = await User.findById(decoded.id).select("-password")
+    return user || null
+  } catch {
+    return null
+  }
+}
+
+/** Stream file for inline viewing (PDF in browser). Accepts token in query for window.open. */
+export const streamFileView = async (req, res) => {
+  try {
+    const user = await getUserFromToken(req)
+    if (!user) return res.status(401).json({ error: "Unauthorized" })
+
+    const file = await File.findById(req.params.id).populate("user", "email name")
+    if (!file) return res.status(404).json({ error: "File not found" })
+
+    const isOwner = file.user._id.toString() === user._id.toString()
+    const isAdmin = user.role === "admin"
+    const perm = await hasAccess(user._id, file._id)
+    if (!isOwner && !isAdmin && !perm) return res.status(403).json({ error: "No access to this file" })
+
+    if (file.type !== "application/pdf") {
+      return res.redirect(302, file.url)
+    }
+
+    const fetchRes = await fetch(file.url)
+    if (!fetchRes.ok) return res.status(502).json({ error: "Failed to fetch file from storage" })
+
+    res.setHeader("Content-Type", "application/pdf")
+    res.setHeader("Content-Disposition", "inline")
+    Readable.fromWeb(fetchRes.body).pipe(res)
+  } catch (err) {
+    console.error("Stream file view error:", err)
+    res.status(500).json({ error: "Failed to stream file" })
   }
 }

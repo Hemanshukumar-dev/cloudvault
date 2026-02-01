@@ -1,8 +1,13 @@
 import { useState } from "react"
+import { baseURL } from "../services/api"
 
 const FileCard = ({ file, onDelete }) => {
   const name = file.filename || file.url?.split("/").pop() || file._id
   const [copied, setCopied] = useState(false)
+  const isPdf = file.type === "application/pdf"
+  const viewUrl = isPdf
+    ? `${baseURL}/files/${file._id}/view?token=${encodeURIComponent(localStorage.getItem("token") || "")}`
+    : file.url
 
   const getShareLink = () => {
     return `${window.location.origin}/share/${file._id}`
@@ -52,7 +57,7 @@ const FileCard = ({ file, onDelete }) => {
         </div>
 
         <a
-          href={file.url}
+          href={viewUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[#8E8D8A] font-bold text-lg hover:text-[#E85A4F] truncate w-full px-2"

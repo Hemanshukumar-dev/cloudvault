@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from "react"
 import { useNavigate } from "react-router-dom"
-import API from "../services/api"
+import API, { baseURL } from "../services/api"
 import FileCard from "../components/FileCard"
 import UploadModal from "../components/UploadModal"
 import { AuthContext } from "../context/AuthContext"
@@ -421,7 +421,7 @@ const Dashboard = () => {
                           {req.status}
                         </span>
                         {req.status === 'approved' && (
-                          <a href={req.file.url} target="_blank" rel="noopener noreferrer" className="block text-xs text-[#E85A4F] hover:underline font-medium">
+                          <a href={req.file.type === "application/pdf" ? `${baseURL}/files/${req.file._id}/view?token=${encodeURIComponent(localStorage.getItem("token") || "")}` : req.file.url} target="_blank" rel="noopener noreferrer" className="block text-xs text-[#E85A4F] hover:underline font-medium">
                             View File &rarr;
                           </a>
                         )}

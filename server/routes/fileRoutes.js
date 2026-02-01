@@ -2,7 +2,7 @@ import express from "express"
 import upload from "../middleware/uploadMiddleware.js"
 import auth from "../middleware/authMiddleware.js"
 import admin from "../middleware/adminMiddleware.js"
-import { uploadFile, getUserFiles, deleteFile, getAllFiles, adminDeleteFile, viewFile, getFileInfoForShare } from "../controllers/fileController.js"
+import { uploadFile, getUserFiles, deleteFile, getAllFiles, adminDeleteFile, viewFile, getFileInfoForShare, streamFileView } from "../controllers/fileController.js"
 
 const router = express.Router()
 
@@ -13,6 +13,7 @@ router.delete("/:id", auth, deleteFile)
 
 router.get("/admin/all", auth, admin, getAllFiles)
 router.delete("/admin/:id", auth, admin, adminDeleteFile)
+router.get("/:id/view", streamFileView)
 router.get("/:id", auth, viewFile)
 
 export default router
